@@ -59,8 +59,8 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           # Use 'sed' to replace the image tag in your deployment files with the new one
-          sed -i 's|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|' k8s/3-backend.yaml
-          sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/4-frontend.yaml
+          sed -i 's|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|' k8s/backend-deployment.yaml
+          sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/frontend-deployment.yaml
           
           # Apply all the Kubernetes manifests
           kubectl apply -f k8s/
