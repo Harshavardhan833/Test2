@@ -1,0 +1,66 @@
+# This is the name of your CI/CD pipeline
+name: Deploy to Kubernetes
+
+# This pipeline runs on any push to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+# These are the jobs that will run in the pipeline
+jobs:
+  build-and-deploy:
+    # This job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out your code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Set up Docker Buildx for building multi-platform images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # 3. Log in to Docker Hub using secrets
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. Build and push the Backend image
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./eka_backend
+          file: ./eka_backend/Dockerfile
+          push: true
+          # Tags the image with 'latest' and the unique git commit SHA
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:latest,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
+
+      # 5. Build and push the Frontend image
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./eka_sw_new
+          file: ./eka_sw_new/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:latest,${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
+
+      # 6. Set up kubectl for deploying to Kubernetes
+      - name: Set up kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          # Your Kubernetes configuration file, stored as a secret
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      # 7. Deploy to Kubernetes
+      - name: Deploy to Kubernetes
+        run: |
+          # Use 'sed' to replace the image tag in your deployment files with the new one
+          sed -i 's|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|' k8s/3-backend.yaml
+          sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/4-frontend.yaml
+          
+          # Apply all the Kubernetes manifests
+          kubectl apply -f k8s/

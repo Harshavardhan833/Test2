@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./eka_backend
+      dockerfile: Dockerfile
+    container_name: eka_backend
+    command: >
+      sh -c "
+        until pg_isready -h db -p 5432 -U postgres; do
+          echo 'Waiting for PostgreSQL...'
+          sleep 1
+        done &&
+        python manage.py migrate &&
+        gunicorn --bind 0.0.0.0:8000 eka_backend.wsgi"
+    volumes:
+      - ./eka_backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=mydatabase
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./eka_sw_new
+      dockerfile: Dockerfile
+    container_name: eka_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:15-alpine
+    container_name: eka_database
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    # This is the new section that exposes the port
+    ports:
+      - "5434:5432" 
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_PASSWORD=root
+
+volumes:
+  postgres_data:

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+data:
+  config.js: |
+    window.runtimeConfig = {
+      API_BASE_URL: '/api'
+    };
