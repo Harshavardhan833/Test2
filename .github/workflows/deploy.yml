@@ -12,7 +12,6 @@ jobs:
   build-and-deploy:
     # This job runs on the latest version of Ubuntu
     runs-on: ubuntu-latest
-
     steps:
       # 1. Check out your code from the repository
       - name: Checkout code
@@ -36,7 +35,7 @@ jobs:
           context: ./eka_backend
           file: ./eka_backend/Dockerfile
           push: true
-          # Tags the image with 'latest' and the unique git commit SHA
+          # Tags the image with a static version and the unique git commit SHA
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
 
       # 5. Build and push the Frontend image
@@ -58,9 +57,14 @@ jobs:
       # 7. Deploy to Kubernetes
       - name: Deploy to Kubernetes
         run: |
-          # Use 'sed' to replace the image tag in your deployment files with the new one
+          # Use 'sed' to replace the image tags in your deployment files with the new ones
           sed -i 's|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|' k8s/backend-deployment.yaml
           sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/frontend-deployment.yaml
-          
-          # Apply all the Kubernetes manifests
-          kubectl apply -f k8s/ --validate=false
+
+          # Apply all the Kubernetes manifests. The --validate=false flag has been removed.
+          kubectl apply -f k8s/
+
+          # (Recommended) Wait for the rollout to complete to ensure the deployment was successful
+          echo "Waiting for deployment rollout to finish..."
+          kubectl rollout status deployment/backend-deployment --timeout=60s
+          kubectl rollout status deployment/frontend-deployment --timeout=60s
