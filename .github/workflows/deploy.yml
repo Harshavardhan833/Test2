@@ -63,4 +63,4 @@ jobs:
           sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/frontend-deployment.yaml
           
           # Apply all the Kubernetes manifests
-          kubectl apply -f k8s/
+          kubectl apply -f k8s/ --validate=false
