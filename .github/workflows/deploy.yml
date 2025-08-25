@@ -62,7 +62,8 @@ jobs:
           sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/frontend-deployment.yaml
 
           # Apply all the Kubernetes manifests. The --validate=false flag has been removed.
-          kubectl apply -f k8s/
+          kubectl apply --validate=false -f k8s/
+
 
           # (Recommended) Wait for the rollout to complete to ensure the deployment was successful
           echo "Waiting for deployment rollout to finish..."
