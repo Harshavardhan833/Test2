@@ -37,7 +37,7 @@ jobs:
           file: ./eka_backend/Dockerfile
           push: true
           # Tags the image with 'latest' and the unique git commit SHA
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:latest,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
 
       # 5. Build and push the Frontend image
       - name: Build and push Frontend image
@@ -46,7 +46,7 @@ jobs:
           context: ./eka_sw_new
           file: ./eka_sw_new/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:latest,${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
 
       # 6. Set up kubectl for deploying to Kubernetes
       - name: Set up kubectl

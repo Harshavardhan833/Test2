@@ -4,7 +4,7 @@ metadata:
   name: eka-ingress
 spec:
   rules:
-  - host: 99185fe33e8268748cf7a8498967f013.serveo.net
+  - host: af53ea098200486a1843273223edd1f2.serveo.net
     http:
       paths:
       - path: /
