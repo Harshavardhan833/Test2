@@ -1,20 +1,19 @@
-# This is the name of your CI/CD pipeline
+
 name: Deploy to Kubernetes
 
-# This pipeline runs on any push to the 'main' branch
+
 on:
   push:
     branches:
       - main
 
-# These are the jobs that will run in the pipeline
 jobs:
   build-and-deploy:
-    # This job runs on the latest version of Ubuntu
+
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Check out your code from the repository
+      # 1. Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
