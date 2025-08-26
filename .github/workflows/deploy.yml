@@ -73,7 +73,7 @@ jobs:
           sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
 
           echo "Applying Kubernetes manifests..."
-          kubectl apply -f k8s/ --validate=false
+          kubectl apply -f k8s/ 
 
           echo "Waiting for rollout..."
           kubectl rollout status deployment/backend-deployment --timeout=60s
