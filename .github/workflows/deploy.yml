@@ -11,7 +11,6 @@ jobs:
   build-and-deploy:
 
     runs-on: ubuntu-latest
-
     steps:
       # 1. Checkout the repository
       - name: Checkout code
@@ -35,7 +34,7 @@ jobs:
           context: ./eka_backend
           file: ./eka_backend/Dockerfile
           push: true
-          # Tags the image with 'latest' and the unique git commit SHA
+          # Tags the image with a static version and the unique git commit SHA
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
 
       # 5. Build and push the Frontend image
@@ -47,19 +46,36 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
 
-      # 6. Set up kubectl for deploying to Kubernetes
-      - name: Set up kubectl
-        uses: azure/k8s-set-context@v3
-        with:
-          # Your Kubernetes configuration file, stored as a secret
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      # 7. Deploy to Kubernetes
-      - name: Deploy to Kubernetes
+      # 6. Set up kubeconfig manually from secret
+      - name: Set up kubeconfig
         run: |
-          # Use 'sed' to replace the image tag in your deployment files with the new one
-          sed -i 's|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|' k8s/3-backend.yaml
-          sed -i 's|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|' k8s/4-frontend.yaml
-          
-          # Apply all the Kubernetes manifests
-          kubectl apply -f k8s/
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+        env:
+          KUBECONFIG: $HOME/.kube/config
+
+      # 7. Test Kubernetes context
+      - name: Verify Kubernetes cluster access
+        run: |
+          kubectl config current-context
+          kubectl cluster-info
+          kubectl get nodes
+
+      # 8. Deploy to Kubernetes
+      - name: Deploy to Kubernetes
+        env:
+          KUBECONFIG: $HOME/.kube/config
+        run: |
+          echo "Injecting image tags into Kubernetes manifests..."
+
+          sed -i "s|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
+          sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
+
+          echo "Applying Kubernetes manifests..."
+          kubectl apply -f k8s/ --validate=false
+
+          echo "Waiting for rollout..."
+          kubectl rollout status deployment/backend-deployment --timeout=60s
+          kubectl rollout status deployment/frontend-deployment --timeout=60s
+
