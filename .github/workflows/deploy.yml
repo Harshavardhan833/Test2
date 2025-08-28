@@ -8,9 +8,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      # Use runner.temp expression for kubeconfig path
-      KUBECONFIG: ${{ runner.temp }}/kubeconfig
 
     steps:
       - name: Checkout code
@@ -47,11 +44,11 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" | base64 --decode > $KUBECONFIG
-          chmod 600 $KUBECONFIG
-        env:
-          KUBECONFIG: ${{ runner.temp }}/kubeconfig
+          export KUBECONFIG="${RUNNER_TEMP}/kubeconfig"
+          mkdir -p "$(dirname "$KUBECONFIG")"
+          echo "${{ secrets.KUBECONFIG }}" | base64 --decode > "$KUBECONFIG"
+          chmod 600 "$KUBECONFIG"
+          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
 
       - name: Verify Kubernetes cluster access
         run: |
@@ -62,6 +59,7 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           echo "Injecting dynamic image tags into manifests..."
+
           sed -i "s|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
           sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
 
