@@ -9,7 +9,8 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      KUBECONFIG: ${{ env.RUNNER_TEMP }}/kubeconfig
+      # Use runner.temp expression for kubeconfig path
+      KUBECONFIG: ${{ runner.temp }}/kubeconfig
 
     steps:
       - name: Checkout code
@@ -49,6 +50,8 @@ jobs:
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 --decode > $KUBECONFIG
           chmod 600 $KUBECONFIG
+        env:
+          KUBECONFIG: ${{ runner.temp }}/kubeconfig
 
       - name: Verify Kubernetes cluster access
         run: |
