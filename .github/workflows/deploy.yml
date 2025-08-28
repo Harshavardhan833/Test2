@@ -44,11 +44,15 @@ jobs:
 
       - name: Set up kubeconfig
         run: |
-          export KUBECONFIG="${RUNNER_TEMP}/kubeconfig"
-          mkdir -p "$(dirname "$KUBECONFIG")"
-          echo "${{ secrets.KUBECONFIG }}" | base64 --decode > "$KUBECONFIG"
-          chmod 600 "$KUBECONFIG"
-          echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
+          mkdir -p "$RUNNER_TEMP"
+          # If your KUBECONFIG secret is base64 encoded, decode it, else write raw
+          if echo "${{ secrets.KUBECONFIG }}" | base64 --decode &>/dev/null; then
+            echo "${{ secrets.KUBECONFIG }}" | base64 --decode > "$RUNNER_TEMP/kubeconfig"
+          else
+            echo "${{ secrets.KUBECONFIG }}" > "$RUNNER_TEMP/kubeconfig"
+          fi
+          chmod 600 "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> $GITHUB_ENV
 
       - name: Verify Kubernetes cluster access
         run: |
@@ -59,15 +63,11 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           echo "Injecting dynamic image tags into manifests..."
-
           sed -i "s|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
           sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
-
           echo "Applying Kubernetes manifests..."
           kubectl apply -f k8s/
-
           echo "Waiting for rollout of backend deployment..."
           kubectl rollout status deployment/backend-deployment --timeout=120s
-
           echo "Waiting for rollout of frontend deployment..."
           kubectl rollout status deployment/frontend-deployment --timeout=120s
