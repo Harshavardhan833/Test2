@@ -61,13 +61,23 @@ jobs:
           kubectl get nodes
 
       - name: Deploy to Kubernetes
-        run: |
-          echo "Injecting dynamic image tags into manifests..."
-          sed -i "s|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
-          sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
-          echo "Applying Kubernetes manifests..."
-          kubectl apply -f k8s/
-          echo "Waiting for rollout of backend deployment..."
-          kubectl rollout status deployment/backend-deployment --timeout=120s
-          echo "Waiting for rollout of frontend deployment..."
-          kubectl rollout status deployment/frontend-deployment --timeout=120s
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Set the new image for the frontend deployment
+            kubectl set image deployment/frontend-deployment frontend-container=${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:v1.0.1:${{ github.sha }}
+            
+            # Set the new image for the backend deployment
+            kubectl set image deployment/backend-deployment backend-container=${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1:${{ github.sha }}
+            
+            # Verify the rollout status
+            echo "Verifying frontend deployment..."
+            kubectl rollout status deployment/frontend-deployment
+            
+            echo "Verifying backend deployment..."
+            kubectl rollout status deployment/backend-deployment
+            
+            echo "Deployment successful! ✨"
