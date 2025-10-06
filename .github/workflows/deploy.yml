@@ -1,6 +1,4 @@
-
 name: Deploy to Kubernetes
-
 
 on:
   push:
@@ -9,73 +7,74 @@ on:
 
 jobs:
   build-and-deploy:
-
     runs-on: ubuntu-latest
+
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Set up Docker Buildx for building multi-platform images
+      # 2. Set up Docker Buildx for multi-platform builds
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # 3. Log in to Docker Hub using secrets
+      # 3. Log in to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 4. Build and push the Backend image
+      # 4. Build and push Backend Docker image
       - name: Build and push Backend image
         uses: docker/build-push-action@v4
         with:
           context: ./eka_backend
           file: ./eka_backend/Dockerfile
           push: true
-          # Tags the image with a static version and the unique git commit SHA
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:v1.0.1
+            ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}
 
-      # 5. Build and push the Frontend image
+      # 5. Build and push Frontend Docker image
       - name: Build and push Frontend image
         uses: docker/build-push-action@v4
         with:
           context: ./eka_sw_new
           file: ./eka_sw_new/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:v1.0.1,${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:v1.0.1
+            ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}
 
-      # 6. Set up kubeconfig manually from secret
+      # 6. Set up kubeconfig from secret
       - name: Set up kubeconfig
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
-        env:
-          KUBECONFIG: $HOME/.kube/config
 
-      # 7. Test Kubernetes context
-      - name: Verify Kubernetes cluster access
+      # 7. Verify Kubernetes cluster access
+      - name: Verify Kubernetes cluster
         run: |
           kubectl config current-context
           kubectl cluster-info
           kubectl get nodes
 
-      # 8. Deploy to Kubernetes
+      # 8. Update manifests and deploy
       - name: Deploy to Kubernetes
         env:
           KUBECONFIG: $HOME/.kube/config
         run: |
-          echo "Injecting image tags into Kubernetes manifests..."
-
+          echo "Updating images in Kubernetes manifests..."
           sed -i "s|image: .*eka-backend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-backend:${{ github.sha }}|" k8s/backend-deployment.yaml
           sed -i "s|image: .*eka-frontend.*|image: ${{ secrets.DOCKERHUB_USERNAME }}/eka-frontend:${{ github.sha }}|" k8s/frontend-deployment.yaml
 
-          echo "Applying Kubernetes manifests..."
+          echo "Applying manifests..."
           kubectl apply -f k8s/ --validate=false
 
-          echo "Waiting for rollout...."
-          kubectl rollout status deployment/backend-deployment --timeout=60s
-          kubectl rollout status deployment/frontend-deployment --timeout=60s
+          echo "Waiting for backend deployment rollout..."
+          kubectl rollout status deployment/backend-deployment --timeout=120s
 
+          echo "Waiting for frontend deployment rollout..."
+          kubectl rollout status deployment/frontend-deployment --timeout=120s
