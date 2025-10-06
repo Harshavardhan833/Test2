@@ -75,7 +75,7 @@ jobs:
           echo "Applying Kubernetes manifests..."
           kubectl apply -f k8s/ --validate=false
 
-          echo "Waiting for rollout..."
+          echo "Waiting for rollout...."
           kubectl rollout status deployment/backend-deployment --timeout=60s
           kubectl rollout status deployment/frontend-deployment --timeout=60s
 
